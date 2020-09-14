@@ -1,7 +1,7 @@
 name: "cron_action"
 on:
   schedule:
-    - cron:  '* * * * *'
+    - cron:  '*/5 * * * *'
 env:
   TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
   CARGO_TERM_COLOR: always
