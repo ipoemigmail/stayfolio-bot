@@ -23,5 +23,5 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Run
-      run: cargo run --verbose --release
+      run: target/release/stayfolio-bot
 
