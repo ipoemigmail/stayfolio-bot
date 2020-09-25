@@ -50,6 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "daily_rental_house",
         "hadabookstay",
         "quando-jeju",
+        "byulado",
     ];
     let inner_filter = vec![("A동", "ilsanghosa")];
     let result1 = get_room_list_result(payload1).await?;
