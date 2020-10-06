@@ -35,6 +35,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         city: "한국/제주/서귀포".to_string(),
         ..(payload1.clone())
     };
+    let payload3 = room_list::RequestPayload {
+        check_in: "2020-12-25".to_string(),
+        check_out: "2020-12-27".to_string(),
+        ..(payload1.clone())
+    };
+    let payload4 = room_list::RequestPayload {
+        city: "한국/제주/서귀포".to_string(),
+        ..(payload3.clone())
+    };
     let filter_list = vec![
         "spaceduck",
         "hwaoo_house",
@@ -55,15 +64,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "byulado",
         "ononbellmoon",
         "uonaestay",
+        "dolchae",
+        "acoustic-mansion",
+        "pyeongdae-stay",
+        "pyeongdae-panorama",
+        "stay-sodo",
+        "harunharu",
+        "jeju-tokki",
+        "yeonamje",
+        "af-cabin",
     ];
     let inner_filter = vec![("A동", "ilsanghosa")];
 
     let start = Local::now();
 
-    let task1 = tokio::spawn(async move { get_room_list_result(payload1).await.unwrap() });
-    let task2 = tokio::spawn(async move { get_room_list_result(payload2).await.unwrap() });
+    let payloads = vec![payload1, payload2, payload3, payload4];
 
-    let results = stream::iter(vec![task1, task2])
+    let tasks: Vec<_> = payloads.into_iter().map(|payload| tokio::spawn(async move { get_room_list_result(payload).await.unwrap() })).collect();
+
+    let results = stream::iter(tasks)
         .then(|f| async move { f.await })
         .collect::<Vec<_>>()
         .await;
