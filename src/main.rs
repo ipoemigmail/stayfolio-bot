@@ -1,6 +1,8 @@
 use chrono::prelude::*;
+use futures::stream::{self, StreamExt};
+use std::collections::HashMap;
 use std::env;
-use std::{collections::HashMap, rc::Rc};
+use std::sync::Arc;
 use telegram_bot::*;
 
 mod room_list;
@@ -21,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "none".to_string(),
         "none".to_string(),
         "none".to_string(),
-        Rc::new(room_list::PageObj {
+        Arc::new(room_list::PageObj {
             current_page: 1,
             total_count: 1,
             per_page: 1,
@@ -55,39 +57,67 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "uonaestay",
     ];
     let inner_filter = vec![("A동", "ilsanghosa")];
-    let result1 = get_room_list_result(payload1).await?;
-    let result2 = get_room_list_result(payload2).await?;
-    let r: Vec<Rc<room_list::Item>> = result1
-        .items
-        .into_iter()
-        .chain(result2.items.into_iter())
-        .filter(|x| {
-            filter_list
-                .iter()
-                .find(|y| x.place.identifier.as_str() == **y)
-                .is_none()
-        })
-        .filter(|x| {
-            inner_filter
-                .iter()
-                .find(|(y1, y2)| x.name.as_str() == *y1 && x.place.identifier.as_str() == *y2)
-                .is_none()
-        })
-        .collect();
-    println!("[{}] {}", now.to_string(), serde_json::to_string(&r)?);
-    if !r.is_empty() {
-        let msgs = r
-            .iter()
-            .map(|x| format!("{} ({})", x.name, x.place.name_kr))
-            .collect::<Vec<_>>();
 
-        let commands = vec![format!("지금이니! (https://booking.stayfolio.com)").to_string()];
+    let start = Local::now();
 
-        send_telegram([msgs, commands].concat::<String>().join("\n").as_str()).await?
-    } else {
-        ()
-    }
-    Ok(())
+    let task1 = tokio::spawn(async move { get_room_list_result(payload1).await.unwrap() });
+    let task2 = tokio::spawn(async move { get_room_list_result(payload2).await.unwrap() });
+
+    let results = stream::iter(vec![task1, task2])
+        .then(|f| async move { f.await })
+        .collect::<Vec<_>>()
+        .await;
+
+    let finish = Local::now();
+    let spend_time = finish.timestamp_millis() - start.timestamp_millis();
+    println!("all spend time {}", spend_time);
+
+    let return_value: Result<(), Box<dyn std::error::Error>> =
+        match results.iter().find(|x| x.is_err()) {
+            Some(_) => Err(Box::new(
+                results
+                    .into_iter()
+                    .find(|x| x.is_err())
+                    .unwrap()
+                    .unwrap_err(),
+            )),
+            None => {
+                let r: Vec<Arc<room_list::Item>> = results
+                    .into_iter()
+                    .flat_map(|x| x.unwrap().items)
+                    .filter(|x| {
+                        filter_list
+                            .iter()
+                            .find(|y| x.place.identifier.as_str() == **y)
+                            .is_none()
+                    })
+                    .filter(|x| {
+                        inner_filter
+                            .iter()
+                            .find(|(y1, y2)| {
+                                x.name.as_str() == *y1 && x.place.identifier.as_str() == *y2
+                            })
+                            .is_none()
+                    })
+                    .collect();
+                println!("[{}] {}", now.to_string(), serde_json::to_string(&r)?);
+                if !r.is_empty() {
+                    let msgs = r
+                        .iter()
+                        .map(|x| format!("{} ({})", x.name, x.place.name_kr))
+                        .collect::<Vec<_>>();
+
+                    let commands =
+                        vec![format!("지금이니! (https://booking.stayfolio.com)").to_string()];
+
+                    send_telegram([msgs, commands].concat::<String>().join("\n").as_str()).await?
+                } else {
+                    ()
+                }
+                Ok(())
+            }
+        };
+    return_value
 }
 
 #[allow(dead_code)]

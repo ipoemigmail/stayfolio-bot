@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
+use std::sync::Arc;
 
 /*
 {
@@ -44,7 +44,7 @@ pub struct RequestPayload {
   pub order_keyword: String,
   pub order_service: String,
   pub order_facility: String,
-  pub pageObj: Rc<PageObj>,
+  pub pageObj: Arc<PageObj>,
   pub page: i32,
   pub per: i32,
   pub adult_cnt: String,
@@ -68,7 +68,7 @@ impl RequestPayload {
     order_keyword: String,
     order_service: String,
     order_facility: String,
-    pageObj: Rc<PageObj>,
+    pageObj: Arc<PageObj>,
     page: i32,
     per: i32,
   ) -> RequestPayload {
@@ -126,22 +126,22 @@ pub struct PageObj {
  ],
 */
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Response {
-  pub items: Vec<Rc<Item>>,
+  pub items: Vec<Arc<Item>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
   pub id: i64,
   pub name: String,
   pub description: String,
   pub passenger_cnt_min: i32,
   pub passenger_cnt_max: i32,
-  pub place: Rc<Place>,
+  pub place: Arc<Place>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Place {
   pub id: i64,
   pub identifier: String,
