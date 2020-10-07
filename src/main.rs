@@ -80,7 +80,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let payloads = vec![payload1, payload2, payload3, payload4];
 
-    let tasks: Vec<_> = payloads.into_iter().map(|payload| tokio::spawn(async move { get_room_list_result(payload).await.unwrap() })).collect();
+    let tasks: Vec<_> = payloads
+        .into_iter()
+        .map(|payload| tokio::spawn(async move { get_room_list_result(payload).await.unwrap() }))
+        .collect();
 
     let results = stream::iter(tasks)
         .then(|f| async move { f.await })
