@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..(payload1.clone())
     };
     let payload3 = room_list::RequestPayload {
-        check_in: "2020-12-25".to_string(),
+        check_in: "2020-12-24".to_string(),
         check_out: "2020-12-27".to_string(),
         ..(payload1.clone())
     };
