@@ -71,6 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "jeju-tokki",
         "yeonamje",
         "af-cabin",
+        "bengdi-1967",
     ];
     let inner_filter = vec![("A동", "ilsanghosa")];
 
