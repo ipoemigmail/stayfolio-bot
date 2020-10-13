@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 use telegram_bot::*;
+use std::rc::Rc;
 
 mod room_list;
 
@@ -64,11 +65,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "byulado",
         "ononbellmoon",
         "uonaestay",
-        "dolchae",
         "acoustic-mansion",
-        "pyeongdae-stay",
         "pyeongdae-panorama",
-        "stay-sodo",
         "harunharu",
         "jeju-tokki",
         "yeonamje",
@@ -104,20 +102,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap_err(),
             )),
             None => {
-                let r: Vec<Arc<room_list::Item>> = results
+                let r: Vec<(Rc<String>, Arc<room_list::Item>)> = results
                     .into_iter()
-                    .flat_map(|x| x.unwrap().items)
+                    .flat_map(|x| {
+                        let unwrapped_x = x.unwrap();
+                        let date_str = Rc::new(unwrapped_x.0);
+                        let response = unwrapped_x.1;
+                        response.items.into_iter().map(move |y| (date_str.clone(), y))
+                    })
                     .filter(|x| {
                         filter_list
                             .iter()
-                            .find(|y| x.place.identifier.as_str() == **y)
+                            .find(|y| x.1.place.identifier.as_str() == **y)
                             .is_none()
                     })
                     .filter(|x| {
                         inner_filter
                             .iter()
                             .find(|(y1, y2)| {
-                                x.name.as_str() == *y1 && x.place.identifier.as_str() == *y2
+                                x.1.name.as_str() == *y1 && x.1.place.identifier.as_str() == *y2
                             })
                             .is_none()
                     })
@@ -126,13 +129,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if !r.is_empty() {
                     let msgs = r
                         .iter()
-                        .map(|x| format!("{} ({})", x.name, x.place.name_kr))
+                        .map(|x| format!("{} ({}) - {}", x.1.name, x.1.place.name_kr, *x.0))
                         .collect::<Vec<_>>();
 
                     let commands =
                         vec![format!("지금이니! (https://booking.stayfolio.com)").to_string()];
 
-                    send_telegram([msgs, commands].concat::<String>().join("\n").as_str()).await?
+                    let msgs_str: String = [msgs, commands].concat::<String>().join("\n");
+                    println!("{}", msgs_str);
+                    send_telegram(msgs_str.as_str()).await?;
                 } else {
                     ()
                 }
@@ -168,7 +173,7 @@ async fn send_telegram(msg: &str) -> Result<(), Box<dyn std::error::Error>> {
 
 async fn get_room_list_result(
     payload: room_list::RequestPayload,
-) -> Result<room_list::Response, Box<dyn std::error::Error>> {
+) -> Result<(String, room_list::Response), Box<dyn std::error::Error>> {
     let url = "https://booking.stayfolio.com/places/room_list.json";
     let start = Local::now();
     let resp = reqwest::Client::builder()
@@ -183,5 +188,5 @@ async fn get_room_list_result(
     let finish = Local::now();
     let spend_time = finish.timestamp_millis() - start.timestamp_millis();
     println!("spend time {}", spend_time);
-    Ok(serde_json::from_str(result_text.as_str())?)
+    Ok((payload.check_in, serde_json::from_str(result_text.as_str())?))
 }
