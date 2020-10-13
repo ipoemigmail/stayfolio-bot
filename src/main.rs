@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use chrono::prelude::*;
 use futures::stream::{self, StreamExt};
 use std::collections::HashMap;
@@ -7,6 +10,40 @@ use telegram_bot::*;
 use std::rc::Rc;
 
 mod room_list;
+
+lazy_static! {
+    static ref FILTER_LIST: Vec<&'static str> = vec![
+        "spaceduck",
+        "hwaoo_house",
+        "monogarden",
+        "vintage-jeju",
+        "podo-hotel",
+        "paulstay",
+        "af-camp",
+        "aroundfollie",
+        "comfy-house",
+        "dumogong",
+        //"editorial-jeju",
+        "diving-mat",
+        "pyungdae-raum",
+        "daily_rental_house",
+        "hadabookstay",
+        "quando-jeju",
+        "byulado",
+        "ononbellmoon",
+        "uonaestay",
+        "acoustic-mansion",
+        "pyeongdae-panorama",
+        "harunharu",
+        "jeju-tokki",
+        "yeonamje",
+        "af-cabin",
+        "bengdi-1967",
+        "soyosorim"
+    ];
+
+    static ref INNER_FILTER_LIST: Vec<(&'static str, &'static str)> = vec![("A동", "ilsanghosa")];
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -45,35 +82,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         city: "한국/제주/서귀포".to_string(),
         ..(payload3.clone())
     };
-    let filter_list = vec![
-        "spaceduck",
-        "hwaoo_house",
-        "monogarden",
-        "vintage-jeju",
-        "podo-hotel",
-        "paulstay",
-        "af-camp",
-        "aroundfollie",
-        "comfy-house",
-        "dumogong",
-        //"editorial-jeju",
-        "diving-mat",
-        "pyungdae-raum",
-        "daily_rental_house",
-        "hadabookstay",
-        "quando-jeju",
-        "byulado",
-        "ononbellmoon",
-        "uonaestay",
-        "acoustic-mansion",
-        "pyeongdae-panorama",
-        "harunharu",
-        "jeju-tokki",
-        "yeonamje",
-        "af-cabin",
-        "bengdi-1967",
-    ];
-    let inner_filter = vec![("A동", "ilsanghosa")];
 
     let start = Local::now();
 
@@ -93,6 +101,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let spend_time = finish.timestamp_millis() - start.timestamp_millis();
     println!("all spend time {}", spend_time);
 
+    fn is_valid_item(filter_list: &Vec<&str>, inner_filter: &Vec<(&str, &str)>, item: &room_list::Item) -> bool {
+        let b1 = filter_list
+            .iter()
+            .find(|y| item.place.identifier.as_str() == **y)
+            .is_none();
+
+        let b2 = inner_filter
+            .iter()
+            .find(|(y1, y2)| {
+                item.name.as_str() == *y1 && item.place.identifier.as_str() == *y2
+            })
+            .is_none();
+
+        b1 && b2
+    }
+
     let return_value: Result<(), Box<dyn std::error::Error>> =
         match results.iter().find(|x| x.is_err()) {
             Some(_) => Err(Box::new(
@@ -111,22 +135,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let response = unwrapped_x.1;
                         response.items.into_iter().map(move |y| (date_str.clone(), y))
                     })
-                    .filter(|x| {
-                        filter_list
-                            .iter()
-                            .find(|y| x.1.place.identifier.as_str() == **y)
-                            .is_none()
-                    })
-                    .filter(|x| {
-                        inner_filter
-                            .iter()
-                            .find(|(y1, y2)| {
-                                x.1.name.as_str() == *y1 && x.1.place.identifier.as_str() == *y2
-                            })
-                            .is_none()
-                    })
+                    .filter(|x| is_valid_item(&FILTER_LIST, &INNER_FILTER_LIST, x.1.as_ref()))
                     .collect();
+
                 println!("[{}] {}", now.to_string(), serde_json::to_string(&r)?);
+
                 if !r.is_empty() {
                     let msgs = r
                         .iter()
