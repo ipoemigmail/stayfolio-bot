@@ -39,7 +39,8 @@ lazy_static! {
         "yeonamje",
         "af-cabin",
         "bengdi-1967",
-        "soyosorim"
+        "soyosorim",
+        "uonaehouse",
     ];
 
     static ref INNER_FILTER_LIST: Vec<(&'static str, &'static str)> = vec![("A동", "ilsanghosa")];
